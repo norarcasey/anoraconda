@@ -19,11 +19,11 @@ npm run build:lib  # build the embeddable component library
 ## Embedding the component
 
 ```tsx
-import { Anoraconda } from "@norarcasey/anoraconda";
-import "@norarcasey/anoraconda/style.css";
+import { Anoraconda } from '@norarcasey/anoraconda'
+import '@norarcasey/anoraconda/style.css'
 
 export function App() {
-  return <Anoraconda />;
+  return <Anoraconda />
 }
 ```
 
@@ -31,23 +31,23 @@ export function App() {
 
 ### Props
 
-| Prop             | Type             | Default        | Description                                          |
-| ---------------- | ---------------- | -------------- | ---------------------------------------------------- |
-| `cols`           | `number`         | `20`           | Board width in cells.                                |
-| `rows`           | `number`         | `20`           | Board height in cells.                               |
-| `speed`          | `number`         | `120`          | Milliseconds between moves; lower is faster.         |
-| `enableKeyboard` | `boolean`        | `true`         | Steer with the arrow keys / WASD.                    |
-| `title`          | `string \| null` | `"Anoraconda"` | Heading above the board; pass `null` to hide it.     |
-| `className`      | `string`         | —              | Extra class on the root element.                     |
+| Prop             | Type             | Default        | Description                                      |
+| ---------------- | ---------------- | -------------- | ------------------------------------------------ |
+| `cols`           | `number`         | `20`           | Board width in cells.                            |
+| `rows`           | `number`         | `20`           | Board height in cells.                           |
+| `speed`          | `number`         | `120`          | Milliseconds between moves; lower is faster.     |
+| `enableKeyboard` | `boolean`        | `true`         | Steer with the arrow keys / WASD.                |
+| `title`          | `string \| null` | `"Anoraconda"` | Heading above the board; pass `null` to hide it. |
+| `className`      | `string`         | —              | Extra class on the root element.                 |
 
 ### Headless engine
 
 The game logic lives in a framework-free hook if you want to build your own UI:
 
 ```tsx
-import { useAnoraconda } from "@norarcasey/anoraconda";
+import { useAnoraconda } from '@norarcasey/anoraconda'
 
-const game = useAnoraconda({ cols: 30, rows: 30, speed: 90 });
+const game = useAnoraconda({ cols: 30, rows: 30, speed: 90 })
 // game.snake, game.food, game.score, game.status
 // game.start(), game.reset(), game.turn("up" | "down" | "left" | "right")
 ```

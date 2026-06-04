@@ -8,8 +8,7 @@ export default function App() {
         <h1 className="demo__title">Anoraconda 🐍</h1>
         <p className="demo__lede">
           Steer the anaconda with the arrow keys (or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd>{' '}
-          <kbd>D</kbd>). Eat the apples to grow longer — just don't run into the walls or
-          yourself.
+          <kbd>D</kbd>). Eat the apples to grow longer — just don't run into the walls or yourself.
         </p>
       </header>
 

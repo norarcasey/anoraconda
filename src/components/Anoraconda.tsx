@@ -64,7 +64,10 @@ export function Anoraconda({
   const isOver = status === 'over' || status === 'won'
 
   return (
-    <section className={`anoraconda${className ? ` ${className}` : ''}`} aria-label={title ?? 'Snake game'}>
+    <section
+      className={`anoraconda${className ? ` ${className}` : ''}`}
+      aria-label={title ?? 'Snake game'}
+    >
       <header className="anoraconda__header">
         {title !== null && <h2 className="anoraconda__title">{title}</h2>}
         <span className="anoraconda__score" aria-live="polite">
@@ -78,7 +81,9 @@ export function Anoraconda({
         {status !== 'running' && (
           <div className="anoraconda__overlay" role="status">
             {status === 'idle' && <p className="anoraconda__message">Ready to slither?</p>}
-            {status === 'over' && <p className="anoraconda__message">Game over — score {game.score}</p>}
+            {status === 'over' && (
+              <p className="anoraconda__message">Game over — score {game.score}</p>
+            )}
             {status === 'won' && <p className="anoraconda__message">You filled the board! 🏆</p>}
             <button type="button" className="anoraconda__button" onClick={start}>
               {isOver ? 'Play again' : 'Start'}

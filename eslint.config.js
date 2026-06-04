@@ -25,6 +25,9 @@ export default tseslint.config(
       // type annotation or a runtime narrowing check instead. `as const` is
       // still allowed — it tightens types rather than overriding them.
       '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
+      // No non-null assertions either: `x!` hides the same nulls the type
+      // checker is trying to surface. Narrow with a real runtime check instead.
+      '@typescript-eslint/no-non-null-assertion': 'error',
     },
   },
   // Vitest provides describe/it/expect etc. as globals via vite.config test setup.

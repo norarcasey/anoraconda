@@ -24,10 +24,10 @@ export function Board({ cols, rows, snake, food }: BoardProps) {
     height: `${cellH}%`,
   })
 
-  const gridStyle = {
+  const gridStyle: CSSProperties = {
     aspectRatio: `${cols} / ${rows}`,
     backgroundSize: `${cellW}% ${cellH}%`,
-  } as CSSProperties
+  }
 
   return (
     <div className="anoraconda__board" style={gridStyle} data-testid="board">

@@ -21,6 +21,10 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // No type casting: `x as Foo` / `<Foo>x` defeat the type checker. Use a
+      // type annotation or a runtime narrowing check instead. `as const` is
+      // still allowed — it tightens types rather than overriding them.
+      '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
     },
   },
   // Vitest provides describe/it/expect etc. as globals via vite.config test setup.

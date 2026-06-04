@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer } from 'react'
 import type { Direction, GameStatus, Point } from './types'
 
 export interface UseAnoracondaOptions {
@@ -17,7 +17,7 @@ export interface AnoracondaApi {
   snake: Point[]
   /** The apple the snake is chasing. */
   food: Point
-  /** Direction the snake will travel on the next tick. */
+  /** Direction the snake is travelling. */
   direction: Direction
   status: GameStatus
   /** Apples eaten so far. */
@@ -46,106 +46,129 @@ const DELTA: Record<Direction, Point> = {
   right: { x: 1, y: 0 },
 }
 
+// The entire game lives in one reducer so each transition is computed from the
+// previous state in a single pure step. That keeps it correct when several
+// ticks fire between renders, and safe under StrictMode's double-invocation —
+// both things that break when the loop juggles several useState setters at once.
+interface GameState {
+  cols: number
+  rows: number
+  snake: Point[]
+  food: Point
+  /** The direction the last tick moved (and the next tick will, unless turned). */
+  direction: Direction
+  /** The direction queued for the next tick. */
+  pending: Direction
+  /** A turn is already queued this tick — block further turns until it lands. */
+  turnLocked: boolean
+  status: GameStatus
+  score: number
+}
+
+type GameAction =
+  | { type: 'configure'; cols: number; rows: number }
+  | { type: 'reset' }
+  | { type: 'start' }
+  | { type: 'turn'; dir: Direction }
+  | { type: 'tick' }
+
+function makeInitial(cols: number, rows: number): GameState {
+  const snake = initialSnake(cols, rows)
+  return {
+    cols,
+    rows,
+    snake,
+    food: spawnFood(snake, cols, rows),
+    direction: 'right',
+    pending: 'right',
+    turnLocked: false,
+    status: 'idle',
+    score: 0,
+  }
+}
+
+function reducer(state: GameState, action: GameAction): GameState {
+  switch (action.type) {
+    case 'configure':
+      return makeInitial(action.cols, action.rows)
+    case 'reset':
+      return makeInitial(state.cols, state.rows)
+    case 'start':
+      return { ...makeInitial(state.cols, state.rows), status: 'running' }
+    case 'turn': {
+      // Only one turn lands per tick, validated against the committed direction.
+      // The lock stops two quick taps (right → up → left) from folding the snake
+      // back into its own neck before a tick has a chance to consume the first.
+      if (state.turnLocked) return state
+      if (action.dir === state.direction || action.dir === OPPOSITE[state.direction]) {
+        return state
+      }
+      return { ...state, pending: action.dir, turnLocked: true }
+    }
+    case 'tick': {
+      if (state.status !== 'running') return state
+
+      const dir = state.pending
+      const delta = DELTA[dir]
+      const head = { x: state.snake[0].x + delta.x, y: state.snake[0].y + delta.y }
+
+      // Wall collision.
+      if (head.x < 0 || head.y < 0 || head.x >= state.cols || head.y >= state.rows) {
+        return { ...state, direction: dir, turnLocked: false, status: 'over' }
+      }
+
+      const willEat = head.x === state.food.x && head.y === state.food.y
+      // When not eating, the tail vacates its cell this tick, so moving into it
+      // is legal. When eating, the whole body stays put and the snake grows.
+      const body = willEat ? state.snake : state.snake.slice(0, -1)
+      if (body.some((p) => p.x === head.x && p.y === head.y)) {
+        return { ...state, direction: dir, turnLocked: false, status: 'over' }
+      }
+
+      const snake = [head, ...body]
+      const base = { ...state, snake, direction: dir, turnLocked: false }
+      if (!willEat) return base
+
+      const score = state.score + 1
+      if (snake.length === state.cols * state.rows) {
+        return { ...base, score, status: 'won' }
+      }
+      return { ...base, score, food: spawnFood(snake, state.cols, state.rows) }
+    }
+  }
+}
+
 export function useAnoraconda(options: UseAnoracondaOptions = {}): AnoracondaApi {
   const cols = options.cols ?? DEFAULTS.cols
   const rows = options.rows ?? DEFAULTS.rows
   const speed = options.speed ?? DEFAULTS.speed
 
-  const [snake, setSnake] = useState<Point[]>(() => initialSnake(cols, rows))
-  const [food, setFood] = useState<Point>(() => spawnFood(initialSnake(cols, rows), cols, rows))
-  const [direction, setDirection] = useState<Direction>('right')
-  const [status, setStatus] = useState<GameStatus>('idle')
-  const [score, setScore] = useState(0)
-
-  // The committed direction (used to reject reversals) and the queued turn live
-  // in refs so the tick can read the freshest values without re-subscribing.
-  const directionRef = useRef<Direction>('right')
-  const queuedRef = useRef<Direction>('right')
-  const foodRef = useRef<Point>(food)
-  foodRef.current = food
-
-  const reset = useCallback(() => {
-    const start = initialSnake(cols, rows)
-    directionRef.current = 'right'
-    queuedRef.current = 'right'
-    setSnake(start)
-    setFood(spawnFood(start, cols, rows))
-    setDirection('right')
-    setScore(0)
-    setStatus('idle')
-  }, [cols, rows])
+  const [state, dispatch] = useReducer(reducer, undefined, () => makeInitial(cols, rows))
 
   // Re-seed the board whenever its dimensions change.
   useEffect(() => {
-    reset()
-  }, [reset])
-
-  const start = useCallback(() => {
-    reset()
-    setStatus('running')
-  }, [reset])
-
-  const turn = useCallback((dir: Direction) => {
-    // Compare against the last queued turn, not just the committed direction, so
-    // two quick taps (e.g. right → up → left) can't fold back into the snake.
-    if (dir === OPPOSITE[queuedRef.current]) return
-    queuedRef.current = dir
-    setDirection(dir)
-  }, [])
-
-  const step = useCallback(() => {
-    setSnake((prev) => {
-      const dir = queuedRef.current
-      directionRef.current = dir
-
-      const delta = DELTA[dir]
-      const head = { x: prev[0].x + delta.x, y: prev[0].y + delta.y }
-
-      // Wall collision.
-      if (head.x < 0 || head.y < 0 || head.x >= cols || head.y >= rows) {
-        setStatus('over')
-        return prev
-      }
-
-      const willEat = head.x === foodRef.current.x && head.y === foodRef.current.y
-      // When not eating, the tail vacates its cell this tick, so moving into it
-      // is legal. When eating, the whole body stays put and grows.
-      const body = willEat ? prev : prev.slice(0, -1)
-      if (body.some((p) => p.x === head.x && p.y === head.y)) {
-        setStatus('over')
-        return prev
-      }
-
-      const next = [head, ...body]
-
-      if (willEat) {
-        setScore((s) => s + 1)
-        if (next.length === cols * rows) {
-          setStatus('won')
-        } else {
-          setFood(spawnFood(next, cols, rows))
-        }
-      }
-
-      return next
-    })
+    dispatch({ type: 'configure', cols, rows })
   }, [cols, rows])
+
+  const start = useCallback(() => dispatch({ type: 'start' }), [])
+  const reset = useCallback(() => dispatch({ type: 'reset' }), [])
+  const turn = useCallback((dir: Direction) => dispatch({ type: 'turn', dir }), [])
 
   // The game loop: tick on an interval only while running.
   useEffect(() => {
-    if (status !== 'running') return
-    const id = setInterval(step, speed)
+    if (state.status !== 'running') return
+    const id = setInterval(() => dispatch({ type: 'tick' }), speed)
     return () => clearInterval(id)
-  }, [status, speed, step])
+  }, [state.status, speed])
 
   return {
-    cols,
-    rows,
-    snake,
-    food,
-    direction,
-    status,
-    score,
+    cols: state.cols,
+    rows: state.rows,
+    snake: state.snake,
+    food: state.food,
+    direction: state.direction,
+    status: state.status,
+    score: state.score,
     start,
     reset,
     turn,

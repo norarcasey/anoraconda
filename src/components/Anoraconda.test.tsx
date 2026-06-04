@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Anoraconda } from './Anoraconda'
@@ -64,7 +65,11 @@ describe('useAnoraconda', () => {
       right: 'left',
     }
 
-    const { result } = renderHook(() => useAnoraconda({ cols: 10, rows: 10, speed: 10 }))
+    // Run under StrictMode: it double-invokes state updaters, which is the
+    // condition that previously corrupted the eat/grow logic.
+    const { result } = renderHook(() => useAnoraconda({ cols: 10, rows: 10, speed: 10 }), {
+      wrapper: StrictMode,
+    })
 
     act(() => result.current.start())
     expect(result.current.snake).toHaveLength(3)
@@ -89,5 +94,21 @@ describe('useAnoraconda', () => {
 
     expect(result.current.score).toBe(1)
     expect(result.current.snake).toHaveLength(4)
+  })
+
+  it('ignores a quick double-tap that would reverse the snake into itself', () => {
+    const { result } = renderHook(() => useAnoraconda({ cols: 10, rows: 10, speed: 10 }))
+    act(() => result.current.start()) // moving right
+
+    // Up is a legal turn; left right after it would point back into the neck.
+    // The turn lock should drop the second tap so the snake never reverses.
+    act(() => {
+      result.current.turn('up')
+      result.current.turn('left')
+    })
+    act(() => vi.advanceTimersByTime(10))
+
+    expect(result.current.direction).toBe('up')
+    expect(result.current.status).toBe('running')
   })
 })

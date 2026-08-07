@@ -1,6 +1,6 @@
 {
   "name": "@norarcasey/anoraconda",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "An embeddable React snake game — drive the anaconda around the board with your keyboard, eat apples, and grow.",
   "license": "MIT",
